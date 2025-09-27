@@ -11,18 +11,18 @@ export async function POST(req: NextRequest) {
 
   // Insert user message
   const messages = await getMessages(sessionId);
-  
- function mapRole(role: string): "user" | "assistant" {
-  return role === "user" ? "user" : "assistant";
-}
 
-const lastMessagesWithCurrent: { role: "user" | "assistant"; content: string }[] = [
-  ...messages.slice(-5).map(m => ({
-    role: mapRole(m.role),
-    content: String(m.content)
-  })),
-  { role: "user", content: String(content) }
-];
+  function mapRole(role: string): "user" | "assistant" {
+    return role === "user" ? "user" : "assistant";
+  }
+
+  const lastMessagesWithCurrent: { role: "user" | "assistant"; content: string }[] = [
+    ...messages.slice(-5).map(m => ({
+      role: mapRole(m.role),
+      content: String(m.content)
+    })),
+    { role: "user", content: String(content) }
+  ];
 
 
 
@@ -48,6 +48,8 @@ const lastMessagesWithCurrent: { role: "user" | "assistant"; content: string }[]
   Allowed intents:
   - "info": The user is asking for information or help that can be answered using FAQs or predefined data.
   - "admin": The user wants to speak with a human or escalate the session.
+  - "admin_now": The user wants to speak with a human immediately.
+  - "book_call": The user wants to schedule a follow-up call with a human.
   
 
   Your JSON should include:
@@ -60,7 +62,9 @@ const lastMessagesWithCurrent: { role: "user" | "assistant"; content: string }[]
   `;
   const intentRes = await openai.chat.completions.create({
     model: "gpt-5",
-    messages: [{ role: "system", content: intentPrompt }],
+    messages: [{ role: "system", content: intentPrompt },
+    ...lastMessagesWithCurrent
+    ],
     response_format: { type: "json_object" },
   });
 
@@ -68,12 +72,100 @@ const lastMessagesWithCurrent: { role: "user" | "assistant"; content: string }[]
 
   console.log("intentRes:", intentRes.choices[0].message.content);
   console.log("parsed intent:", intent);
+  const now = new Date();
 
+  if (intent.intent === "book_call") {
+    // Extract phone number and preferred time from user's message
+    const bookingPrompt = `
+You are a JSON parser for booking info. 
+
+Extract the phone number and preferred call time from the user message. 
+Respond ONLY in JSON in the format:
+
+{
+  "phone_number": "<user phone number>",
+  "preferred_time": "<preferred call time in ISO 8601 format, Singapore time (GMT+8)>"
+}
+
+current time is: ${now.toISOString()}
+
+If any field is missing or unclear, set it to null.
+
+User message: "${content}"
+`;
+    const bookingRes = await openai.chat.completions.create({
+      model: "gpt-4o-mini",
+      messages: [{ role: "system", content: bookingPrompt }],
+      response_format: { type: "json_object" },
+    });
+
+
+    const bookingInfo = JSON.parse(bookingRes.choices[0].message.content || "{}");
+
+    const phoneNumber = bookingInfo.phone_number;
+    const preferredTime = bookingInfo.preferred_time;
+
+    const session = await getChat(sessionId);
+
+    // Step-by-step logic
+    let message = "";
+    const updates: any = {};
+
+    if (!phoneNumber && !session.phone_number) {
+      message = "Can you provide your phone number so we can reach you?";
+    } else {
+      updates.phone_number = phoneNumber || session.phone_number;
+    }
+
+    if (!preferredTime && !session.booked_call) {
+      message = message
+        ? message + " Also, when would you like us to call you?"
+        : "When would you like us to schedule the call?";
+    } else {
+      updates.booked_call = preferredTime || session.booked_call;
+    }
+
+    // Only mark as pending if we have both pieces of info
+    if (updates.phone_number && updates.booked_call) {
+      updates.call_status = "pending";
+      const readableTime = updates.booked_call
+        ? new Date(updates.booked_call).toLocaleString("en-SG", {
+            timeZone: "Asia/Singapore"
+          })
+        : null;
+
+      message = `Thanks! Your call is scheduled for ${readableTime}. An admin will reach you on ${updates.phone_number} at this time.`;
+    }
+
+    console.log(updates)
+
+    await supabase.from("chat_sessions").update(updates).eq("id", sessionId);
+
+    await addMessage(sessionId, "assistant", message);
+
+    return NextResponse.json({ ok: 7 });
+  }
   if (intent.intent === "admin" || intent.intent === "unknown") {
-    await supabase.from("chat_sessions").update({ escalation_pending: true }).eq("id", sessionId);
-    await addMessage(sessionId, "assistant", "Please wait a moment while I connect you with our admin.");
+
+    // Ask user what they want: immediate admin or schedule a call
+    await addMessage(
+      sessionId,
+      "assistant",
+      "Would you like to connect with an admin now, or schedule a follow-up call for later?"
+    );
+
     return NextResponse.json({ ok: 3 });
   }
+
+  if (intent.intent === "admin_now") {
+    await supabase.from("chat_sessions").update({ escalation_pending: true }).eq("id", sessionId);
+    await addMessage(sessionId, "assistant", "Please wait a moment while I connect you with our admin.");
+    return NextResponse.json({ ok: 3.5 });
+  }
+
+
+
+
 
   // ---- Retrieve FAQ items ----
   if (intent.intent === "info") {
@@ -105,7 +197,7 @@ const lastMessagesWithCurrent: { role: "user" | "assistant"; content: string }[]
         model: "gpt-4o-mini",
         temperature: 0,
         messages: [{ role: "system", content: answerPrompt },
-          ...lastMessagesWithCurrent
+        ...lastMessagesWithCurrent
         ],
       });
 
@@ -113,16 +205,13 @@ const lastMessagesWithCurrent: { role: "user" | "assistant"; content: string }[]
 
       if (answer.toUpperCase().includes("ESCALATE_TO_ADMIN")) {
         // escalate session
-        await supabase
-          .from("chat_sessions")
-          .update({ escalation_pending: true })
-          .eq("id", sessionId);
 
         await addMessage(
           sessionId,
           "assistant",
-          "Please wait a moment while we connect you with our admin."
+          "Would you like to connect with an admin now, or schedule a follow-up call for later?"
         );
+
 
         return NextResponse.json({ ok: 4 });
       }
@@ -138,19 +227,19 @@ const lastMessagesWithCurrent: { role: "user" | "assistant"; content: string }[]
         model: "gpt-4o-mini",
         temperature: 0,
         messages: [{ role: "system", content: fallbackPrompt },
-          ...lastMessagesWithCurrent
+        ...lastMessagesWithCurrent
         ],
       });
 
       answer = fallbackRes.choices[0].message.content || "";
 
       if (answer.toUpperCase().includes("ESCALATE_TO_ADMIN")) {
-        await supabase
-          .from("chat_sessions")
-          .update({ escalation_pending: true })
-          .eq("id", sessionId);
+        await addMessage(
+          sessionId,
+          "assistant",
+          "Would you like to connect with an admin now, or schedule a follow-up call for later?"
+        );
 
-        await addMessage(sessionId, "assistant", "Please wait a moment while we connect you with our admin.");
         return NextResponse.json({ ok: 4.5 });
       }
     }
