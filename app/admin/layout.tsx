@@ -1,3 +1,9 @@
+/**
+ * layout.tsx
+ * 
+ * uses default layout from vercel template
+ */
+
 import "./globals.css";
 import { Metadata } from "next";
 import { Toaster } from "sonner";

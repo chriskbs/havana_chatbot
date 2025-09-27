@@ -1,4 +1,12 @@
-// app/page.tsx
+/**
+ * page.tsx
+ * 
+ * Front End UI landing page for users/students
+ * consists of a backdrop of a general university landing page with a chatwidget at bottom right
+ * backdrop initialized using chatGPT then customized for improved UI
+ * 
+ */
+
 import Image from "next/image";
 import ChatWidget from "@/components/chatwidget";
 

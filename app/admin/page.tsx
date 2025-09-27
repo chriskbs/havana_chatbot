@@ -1,12 +1,19 @@
-// app/admin/page.tsx
+/**
+ * page.tsx
+ * 
+ * Front End UI page for admin
+ * consists of two tables, first is the list of active chats and second is list of chats that booked a call
+ * initialized using chatGPT then customized for improved UI
+ * 
+ */
+
 "use client";
 import React, { useEffect, useState } from "react";
 import { getAdminChats, getAdminCallChats, updateAdminChat, getChats } from "@/lib/supabase/query";
 import AdminChatView from "@/components/AdminChatView";
 import { supabase } from "@/lib/supabase/client";
-import ChatWindow from "@/components/ChatWindow";
 
-
+// Chat type definition
 interface ChatSession {
   id: number;
   updated_at: string;
@@ -17,6 +24,20 @@ interface ChatSession {
   escalation_pending: boolean;
 }
 
+/**
+ * Admin page
+ *
+ * Handles:
+ * - Loading relevant chats for admin
+ * - opening a sidebar for chats
+ * 
+ * Future implementation
+ * - refresh button
+ * - webhooks to listen for updates for the table
+ * 
+ * currently admin still needs to manually refresh to get updates to the tables (eg status, chat rows)
+ */
+
 export default function AdminPage() {
   const [sessions, setSessions] = useState<ChatSession[]>([]);
   const [callSessions, setCallSessions] = useState<ChatSession[]>([]);
@@ -24,10 +45,12 @@ export default function AdminPage() {
   const [chatId, setChatId] = useState<string>("");
   const [sidebarOpen, setSidebarOpen] = useState(false);
 
+  // initializes chats for the table
   useEffect(() => {
     fetchChats();
   }, []);
 
+  // fetches chats for both inquiries and call table
   const fetchChats = async () => {
     try {
       const data = await getAdminChats();
@@ -39,18 +62,20 @@ export default function AdminPage() {
     }
   };
 
+  // open the right-hand sidebar for chat session
   const openChat = (id: string) => {
     setChatId(id);
-    setSidebarOpen(true); // open the right-hand sidebar
+    setSidebarOpen(true); 
   };
 
 
+  // UI for admin page
   return (
     <div className="flex p-8 bg-gradient-to-b from-white to-blue-200 min-h-screen">
 
       <div
         className={`transition-all duration-300 p-8`}
-        style={{ flex: sidebarOpen ? 1 : 1 }} // push main content
+        style={{ flex: sidebarOpen ? 1 : 1 }}
       >
         <h1 className="text-3xl font-semibold mb-6 text-gray-900">Admin Dashboard</h1>
 
@@ -110,6 +135,7 @@ export default function AdminPage() {
           </table>
         </div>
 
+        {/* Call Requests Table */}
         <div className="overflow-x-auto mb-6 rounded-2xl shadow-lg">
           <h2 className="text-xl font-semibold mb-4">Scheduled Calls</h2>
           <table className="min-w-full bg-white rounded-2xl shadow-lg overflow-hidden divide-y divide-gray-200">
@@ -186,12 +212,13 @@ export default function AdminPage() {
 
       </div>
 
+      {/* AdminChatView in the Right Hand sidebar */}
       <div
         className={`transition-all duration-300 flex flex-col`}
         style={{
-          flex: sidebarOpen ? 1 : 0,      // flex-grow
-          minWidth: sidebarOpen ? "400px" : "0px", // optional min width when open
-          maxWidth: "400px",              // cap the width
+          flex: sidebarOpen ? 1 : 0,      
+          minWidth: sidebarOpen ? "400px" : "0px", 
+          maxWidth: "400px",              
         }}
       >
         {sidebarOpen &&
