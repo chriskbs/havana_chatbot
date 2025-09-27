@@ -1,7 +1,7 @@
 // app/admin/page.tsx
 "use client";
 import React, { useEffect, useState } from "react";
-import { getAdminChats, updateAdminChat, getChats } from "@/lib/supabase/query";
+import { getAdminChats, getAdminCallChats, updateAdminChat, getChats } from "@/lib/supabase/query";
 import AdminChatView from "@/components/AdminChatView";
 import { supabase } from "@/lib/supabase/client";
 import ChatWindow from "@/components/ChatWindow";
@@ -11,11 +11,15 @@ interface ChatSession {
   id: number;
   updated_at: string;
   is_admin: boolean;
+  booked_call: Date;
+  phone_number: string;
+  call_status: string;
   escalation_pending: boolean;
 }
 
 export default function AdminPage() {
   const [sessions, setSessions] = useState<ChatSession[]>([]);
+  const [callSessions, setCallSessions] = useState<ChatSession[]>([]);
   const [open, setOpen] = useState(false);
   const [chatId, setChatId] = useState<string>("");
   const [sidebarOpen, setSidebarOpen] = useState(false);
@@ -27,8 +31,9 @@ export default function AdminPage() {
   const fetchChats = async () => {
     try {
       const data = await getAdminChats();
+      const callData = await getAdminCallChats();
       setSessions(data);
-      console.log(data)
+      setCallSessions(callData);
     } catch (err) {
       console.error(err);
     }
@@ -55,15 +60,15 @@ export default function AdminPage() {
           <table className="min-w-full bg-white rounded-2xl shadow-lg overflow-hidden divide-y divide-gray-200">
             <thead className="bg-gray-50">
               <tr>
-              {["ID", "Last Updated", "Admin", "Escalation", "Action"].map((col) => (
-                <th
-                  key={col}
-                  className="px-6 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
-                >
-                  {col}
-                </th>
-              ))}
-            </tr>
+                {["ID", "Last Updated", "Admin", "Escalation", "Action"].map((col) => (
+                  <th
+                    key={col}
+                    className="px-6 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
+                  >
+                    {col}
+                  </th>
+                ))}
+              </tr>
             </thead>
 
             <tbody className="bg-white divide-y divide-gray-200">
@@ -104,6 +109,81 @@ export default function AdminPage() {
             </tbody>
           </table>
         </div>
+
+        <div className="overflow-x-auto mb-6 rounded-2xl shadow-lg">
+          <h2 className="text-xl font-semibold mb-4">Scheduled Calls</h2>
+          <table className="min-w-full bg-white rounded-2xl shadow-lg overflow-hidden divide-y divide-gray-200">
+            <thead className="bg-gray-50">
+              <tr>
+                {["ID", "Phone Number", "Scheduled Time", "Status", "Call", "See Chat"].map((col) => (
+                  <th
+                    key={col}
+                    className="px-6 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
+                  >
+                    {col}
+                  </th>
+                ))}
+              </tr>
+            </thead>
+            <tbody className="bg-white divide-y divide-gray-200">
+              {callSessions.map((session) => (
+                <tr
+                  key={session.id}
+                  className="border-b hover:bg-gray-50 transition-colors duration-200"
+                >
+                  <td className="py-4 px-6 text-gray-800 font-medium">{session.id}</td>
+                  <td className="py-4 px-6 text-gray-600">{session.phone_number}</td>
+                  <td className="py-4 px-6 text-gray-600">
+                    {new Date(session.booked_call).toLocaleString("en-SG", { timeZone: "Asia/Singapore" })}
+                  </td>
+                  <td className="py-4 px-6 text-left">
+                    <span
+                      className={`inline-block text-xs font-semibold px-2 py-1 rounded-full ${session.call_status === "pending"
+                        ? "bg-red-100 text-red-800"
+                        : "bg-blue-100 text-blue-800"
+                        }`}
+                    >
+                      {session.call_status}
+                    </span>
+                  </td>
+
+                  <td className="py-4 px-6 text-left">
+                    <button
+                      onClick={async () => {
+                        try {
+                          // Update call_status to 'completed'
+                          await supabase
+                            .from("chat_sessions")
+                            .update({ call_status: "completed" })
+                            .eq("id", session.id);
+
+                          window.open(`tel:${session.phone_number}`, "_blank");
+
+
+                        } catch (error) {
+                          console.error(error);
+                          alert("Failed to update call status.");
+                        }
+                      }}
+                      className="bg-blue-500 text-white px-4 py-2 rounded-lg hover:bg-blue-600 transition-colors duration-200 shadow-sm"
+                    >
+                      Call
+                    </button>
+                  </td>
+                  <td className="py-4 px-6 text-left">
+                    <button
+                      onClick={() => openChat(session.id.toString())}
+                      className="bg-green-500 text-white px-4 py-2 rounded-lg hover:bg-green-600 transition-colors duration-200 shadow-sm" >
+                      Open Chat
+                    </button>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+
+
       </div>
 
       <div

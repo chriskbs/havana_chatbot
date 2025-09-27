@@ -108,6 +108,21 @@ export async function getAdminChats() {
     online: true,
   }));
 }
+export async function getAdminCallChats() {
+  const { data, error } = await supabase
+    .from("chat_sessions")
+    .select("*")
+    .not('booked_call', 'is', null)
+    .not('phone_number', 'is', null)
+    .order("updated_at", { ascending: false })
+    .limit(100);
+  if (error) throw error;
+  return (data || []).map((session) => ({
+    ...session
+  }));
+}
+
+
 
 
 
