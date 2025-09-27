@@ -1,3 +1,8 @@
+
+
+start time: saturday 27 sept 2.30 pm 
+
+
 # Vercel AI SDK useChat with Attachments Example
 
 This example demonstrates how to use the [Vercel AI SDK](https://sdk.vercel.ai/docs) with [Next.js](https://nextjs.org/) with the `useChat` hook to create a chat interface that can send and receive multi-modal messages from the AI provider of your choice.
