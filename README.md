@@ -1,7 +1,9 @@
 
 
 start time: saturday 27 sept 2.30 pm 
+set up vercel + supabase
 
+time finish without comment/documnet: 5:30
 
 # Vercel AI SDK useChat with Attachments Example
 

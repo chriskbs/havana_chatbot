@@ -1,8 +1,22 @@
+/* schema.sql
 
+schema for the project backend postgresql
+tables are chat_sessions, chat_messages, categories, subcategories, faq_items
 
+future implementation could include:
+seperate booking table that references chat_sessions
+user registration
+
+currenlty for simplicity I combined the booking information into chat_session itself
+
+*/
+
+-- enum types
 CREATE TYPE chat_role AS ENUM ('user', 'assistant', 'admin');
 CREATE TYPE call_status AS ENUM ('pending', 'confirmed', 'completed', 'cancelled');
 
+
+-- chat session table
 create table chat_sessions (
   id uuid primary key default gen_random_uuid(),
   is_online boolean default true,
@@ -15,6 +29,7 @@ create table chat_sessions (
   updated_at timestamptz default now()
 );
 
+-- chat message table
 create table chat_messages (
   id uuid primary key default gen_random_uuid(),
   session_id uuid references chat_sessions(id) on delete cascade,
@@ -23,16 +38,20 @@ create table chat_messages (
   created_at timestamptz default now()
 );
 
+-- categories table, currently not in use in implementation
 create table categories (
   id serial primary key,
   name text not null
 );
 
+-- subcategories table
 create table subcategories (
   id serial primary key,
   category_id int references categories(id),
   name text not null
 );
+
+-- faq item tables, list of question and answers for different subcategories
 create table faq_items (
   id serial primary key,
   subcategory_id int references subcategories(id),

@@ -1,3 +1,11 @@
+/** middleware.ts
+ * 
+ * Copy pasted from supabase realtime API chatbot example
+ * currently not in use
+ * 
+ */
+
+
 import { createServerClient } from '@supabase/ssr'
 import { NextResponse, type NextRequest } from 'next/server'
 

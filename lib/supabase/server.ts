@@ -1,3 +1,10 @@
+/** server.ts
+ * Copy pasted from supabase realtime API chatbot example
+ * currently not in use
+ */
+
+
+
 import { createServerClient } from '@supabase/ssr'
 import { cookies } from 'next/headers'
 

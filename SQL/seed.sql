@@ -1,4 +1,15 @@
--- 1. Seed categories (already done)
+/* seeq.sql
+
+Used ChatGPT to seed values into categories, subcategories, and faq_items
+faq_items is used as the information provider for the chatbot to answer simple questions about the school
+
+currently categories are not used into the chatbot in order to improve speed, 
+however as the database scales we can have further searches of categories>subcategories>... to get more specific information for the bot
+
+*/
+
+
+-- 1. Seed categories
 INSERT INTO categories (name) VALUES
 ('Scholarships'),
 ('Admissions'),
@@ -9,7 +20,8 @@ INSERT INTO categories (name) VALUES
 ('Exams & Grading'),
 ('Career Services');
 
--- 2. Seed subcategories (already done)
+-- 2. Seed subcategories
+
 INSERT INTO subcategories (category_id, name) VALUES
 -- Scholarships
 (1, 'Merit-based Scholarships'),
@@ -57,7 +69,7 @@ INSERT INTO subcategories (category_id, name) VALUES
 (8, 'Career Counseling'),
 (8, 'Workshops & Networking');
 
--- 3. Seed FAQ items (heavily expanded)
+-- 3. Seed FAQ items
 
 INSERT INTO faq_items (subcategory_id, question, answer) VALUES
 -- Merit-based Scholarships
