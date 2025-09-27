@@ -1,21 +1,40 @@
-//import { openai } from "@ai-sdk/openai";
+/**
+ * route.ts
+ * 
+ * API route for openAI API
+ * Handles chat interactions, intent detection, FAQ retrieval, and escalation logic.
+ * 
+ */
+
 import OpenAI from "openai";
 import { supabase } from "@/lib/supabase/client";
 import { NextRequest, NextResponse } from "next/server";
 import { getMessages, getChat, addMessage, getCategories, getSubCategories, addChat } from "@/lib/supabase/query"
 
+// Initialize OpenAI client
 const openai = new OpenAI();
 
+/**
+ * POST handler for chat messages.
+ * - Saves user messages
+ * - Runs intent detection (info, admin, admin_now, book_call)
+ * - Handles escalation logic
+ * - Retrieves FAQ answers if relevant
+ * - Updates chat session state
+ */
 export async function POST(req: NextRequest) {
   const { sessionId, content } = await req.json();
 
-  // Insert user message
+  // fetches previous messages in the chat
   const messages = await getMessages(sessionId);
 
+  // maps the chat roles to the user or bot
   function mapRole(role: string): "user" | "assistant" {
     return role === "user" ? "user" : "assistant";
   }
 
+  // Decided to keep the last 5 messages as extra input for context
+  // could be fine tuned further with less messages or find only important ones
   const lastMessagesWithCurrent: { role: "user" | "assistant"; content: string }[] = [
     ...messages.slice(-5).map(m => ({
       role: mapRole(m.role),
@@ -24,21 +43,21 @@ export async function POST(req: NextRequest) {
     { role: "user", content: String(content) }
   ];
 
-
-
-  // Load session
+  // Load current chat session
   const session = await getChat(sessionId);
-
   if (!session) return NextResponse.json({ error: "Session not found" }, { status: 404 });
 
-  // If admin present, bot does nothing
+  // If admin present or requested, bot does nothing
   if (session.is_admin) return NextResponse.json({ ok: 1 });
   if (session.escalation_pending) return NextResponse.json({ ok: 2 });
 
-
+  // Loads subcategories as context
   const subcategories = await getSubCategories();
 
-  // ---- Intent detection with structured output ----
+  /**
+   * Firstly all messages will go through intent detection
+   * outputs a structured JSON
+   */
   const intentPrompt = `
   You are an intent classifier. Given the user message, respond ONLY in JSON.
   
@@ -69,11 +88,10 @@ export async function POST(req: NextRequest) {
   });
 
   const intent = JSON.parse(intentRes.choices[0].message.content || "{}");
-
-  console.log("intentRes:", intentRes.choices[0].message.content);
-  console.log("parsed intent:", intent);
   const now = new Date();
 
+
+  // BOOK CALL Intent
   if (intent.intent === "book_call") {
     // Extract phone number and preferred time from user's message
     const bookingPrompt = `
@@ -111,12 +129,14 @@ User message: "${content}"
     let message = "";
     const updates: any = {};
 
+    // If no phone, request it
     if (!phoneNumber && !session.phone_number) {
       message = "Can you provide your phone number so we can reach you?";
     } else {
       updates.phone_number = phoneNumber || session.phone_number;
     }
 
+    // If no time, request it
     if (!preferredTime && !session.booked_call) {
       message = message
         ? message + " Also, when would you like us to call you?"
@@ -125,28 +145,27 @@ User message: "${content}"
       updates.booked_call = preferredTime || session.booked_call;
     }
 
-    // Only mark as pending if we have both pieces of info
+    // If both details present, mark call as pending
     if (updates.phone_number && updates.booked_call) {
       updates.call_status = "pending";
       const readableTime = updates.booked_call
         ? new Date(updates.booked_call).toLocaleString("en-SG", {
-            timeZone: "Asia/Singapore"
-          })
+          timeZone: "Asia/Singapore"
+        })
         : null;
 
       message = `Thanks! Your call is scheduled for ${readableTime}. An admin will reach you on ${updates.phone_number} at this time.`;
     }
 
-    console.log(updates)
-
+    // Save updates
     await supabase.from("chat_sessions").update(updates).eq("id", sessionId);
-
     await addMessage(sessionId, "assistant", message);
 
     return NextResponse.json({ ok: 7 });
   }
-  if (intent.intent === "admin" || intent.intent === "unknown") {
 
+  // Admin or unknown intent
+  if (intent.intent === "admin" || intent.intent === "unknown") {
     // Ask user what they want: immediate admin or schedule a call
     await addMessage(
       sessionId,
@@ -156,18 +175,16 @@ User message: "${content}"
 
     return NextResponse.json({ ok: 3 });
   }
-
+  
+  // Admin Now intent (asking for an admin to talk to)
   if (intent.intent === "admin_now") {
     await supabase.from("chat_sessions").update({ escalation_pending: true }).eq("id", sessionId);
     await addMessage(sessionId, "assistant", "Please wait a moment while I connect you with our admin.");
     return NextResponse.json({ ok: 3.5 });
   }
 
-
-
-
-
-  // ---- Retrieve FAQ items ----
+  // Info intent
+  // will retrive relevant information as context to be passed to openAI
   if (intent.intent === "info") {
     let answer = "";
     if (intent.topics?.length > 0) {
@@ -203,19 +220,20 @@ User message: "${content}"
 
       answer = answerRes.choices[0].message.content || "";
 
+      // Escalate if AI isn’t confident
       if (answer.toUpperCase().includes("ESCALATE_TO_ADMIN")) {
-        // escalate session
-
         await addMessage(
           sessionId,
           "assistant",
           "Would you like to connect with an admin now, or schedule a follow-up call for later?"
         );
 
-
         return NextResponse.json({ ok: 4 });
       }
     } else {
+      // Fallback: 
+      // No FAQ topics detected
+      // chatbot will respond casually eg for (hi, may i ask, etc)
       const fallbackPrompt = `
     You are May, a friendly assistant.
     Respond helpfully to the user's message, even if it's casual (like "hi", "can I get help", etc.).
@@ -244,10 +262,11 @@ User message: "${content}"
       }
     }
 
+    // Send answer back to user
     await addMessage(sessionId, "assistant", answer || "");
-
     return NextResponse.json({ ok: 5 });
   }
 
+  // Default fallback
   return NextResponse.json({ ok: 6 });
 }
