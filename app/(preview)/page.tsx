@@ -1,339 +1,123 @@
-/* eslint-disable @next/next/no-img-element */
-"use client";
+// app/page.tsx
+import Image from "next/image";
+import ChatWidget from "@/components/chatwidget";
 
-import {
-  AttachmentIcon,
-  BotIcon,
-  UserIcon,
-  VercelIcon,
-} from "@/components/icons";
-import { useChat } from "ai/react";
-import { DragEvent, useEffect, useRef, useState } from "react";
-import { AnimatePresence, motion } from "framer-motion";
-import { toast } from "sonner";
-import Link from "next/link";
-import { Markdown } from "@/components/markdown";
-
-const getTextFromDataUrl = (dataUrl: string) => {
-  const base64 = dataUrl.split(",")[1];
-  return window.atob(base64);
-};
-
-function TextFilePreview({ file }: { file: File }) {
-  const [content, setContent] = useState<string>("");
-
-  useEffect(() => {
-    const reader = new FileReader();
-    reader.onload = (e) => {
-      const text = e.target?.result;
-      setContent(typeof text === "string" ? text.slice(0, 100) : "");
-    };
-    reader.readAsText(file);
-  }, [file]);
-
+export default function HomePage() {
   return (
-    <div>
-      {content}
-      {content.length >= 100 && "..."}
-    </div>
-  );
-}
+    <main className="min-h-screen flex flex-col bg-gradient-to-b from-white to-blue-200">
+      <header className="bg-blue-900 text-white py-6 text-center">
+        <div className="max-w-6xl mx-auto px-4 flex items-center justify-between">
+          <h1 className="text-3xl font-bold">Havana University</h1>
+          <nav className="space-x-4 hidden md:block">
+            <a className="hover:underline">About</a>
+            <a className="hover:underline">Admissions</a>
+            <a className="hover:underline">Courses</a>
+            <a className="hover:underline">Contact</a>
+          </nav>
+        </div>
+      </header>
 
-export default function Home() {
-  const { messages, input, handleSubmit, handleInputChange, isLoading } =
-    useChat({
-      onError: () =>
-        toast.error("You've been rate limited, please try again later!"),
-    });
 
-  const [files, setFiles] = useState<FileList | null>(null);
-  const inputRef = useRef<HTMLInputElement>(null);
-  const fileInputRef = useRef<HTMLInputElement>(null); // Reference for the hidden file input
-  const [isDragging, setIsDragging] = useState(false);
+      <section className="relative aspect-[4/1] w-full">
+        <Image
+          src="/images/education_resource_centre_05.jpg"
+          alt="Campus"
+          fill
+          className="object-cover"
+        />
+        <div className="absolute inset-0 flex items-center justify-center bg-black/10 text-white text-3xl font-semibold">
+          Welcome to Havana University
+        </div>
+      </section>
 
-  const handlePaste = (event: React.ClipboardEvent) => {
-    const items = event.clipboardData?.items;
+      <section className="max-w-6xl mx-auto px-4 py-10 space-y-16">
+   
 
-    if (items) {
-      const files = Array.from(items)
-        .map((item) => item.getAsFile())
-        .filter((file): file is File => file !== null);
+        {/* About / Why Us */}
+        <section>
+          <h2 className="text-2xl font-semibold mb-4">Why Choose Havana University?</h2>
+          <p className="text-gray-700 mb-6">
+            At Havana University, we provide world-class education, a vibrant campus life, and countless opportunities to grow both academically and personally.
+          </p>
+          <ul className="grid grid-cols-1 md:grid-cols-3 gap-6">
+            <li className="bg-white p-6 rounded shadow">🏆 Ranked Top 100 Universities Worldwide</li>
+            <li className="bg-white p-6 rounded shadow">💼 Strong Industry Partnerships & Career Support</li>
+            <li className="bg-white p-6 rounded shadow">🌍 Diverse Student Community from 50+ Countries</li>
+          </ul>
+        </section>
 
-      if (files.length > 0) {
-        const validFiles = files.filter(
-          (file) =>
-            file.type.startsWith("image/") || file.type.startsWith("text/")
-        );
+        {/* Admissions Timeline */}
+        <section>
+          <h2 className="text-2xl font-semibold mb-4">Admissions Timeline</h2>
+          <ol className="space-y-4">
+            <li className="bg-white p-4 rounded shadow">
+              <strong>Oct 1</strong> – Applications Open
+            </li>
+            <li className="bg-white p-4 rounded shadow">
+              <strong>Dec 15</strong> – Early Decision Deadline
+            </li>
+            <li className="bg-white p-4 rounded shadow">
+              <strong>Mar 31</strong> – Regular Decision Deadline
+            </li>
+            <li className="bg-white p-4 rounded shadow">
+              <strong>Apr 15</strong> – Admission Results Announced
+            </li>
+          </ol>
+        </section>
 
-        if (validFiles.length === files.length) {
-          const dataTransfer = new DataTransfer();
-          validFiles.forEach((file) => dataTransfer.items.add(file));
-          setFiles(dataTransfer.files);
-        } else {
-          toast.error("Only image and text files are allowed");
-        }
-      }
-    }
-  };
-
-  const handleDragOver = (event: DragEvent<HTMLDivElement>) => {
-    event.preventDefault();
-    setIsDragging(true);
-  };
-
-  const handleDragLeave = (event: DragEvent<HTMLDivElement>) => {
-    event.preventDefault();
-    setIsDragging(false);
-  };
-
-  const handleDrop = (event: DragEvent<HTMLDivElement>) => {
-    event.preventDefault();
-    const droppedFiles = event.dataTransfer.files;
-    const droppedFilesArray = Array.from(droppedFiles);
-    if (droppedFilesArray.length > 0) {
-      const validFiles = droppedFilesArray.filter(
-        (file) =>
-          file.type.startsWith("image/") || file.type.startsWith("text/")
-      );
-
-      if (validFiles.length === droppedFilesArray.length) {
-        const dataTransfer = new DataTransfer();
-        validFiles.forEach((file) => dataTransfer.items.add(file));
-        setFiles(dataTransfer.files);
-      } else {
-        toast.error("Only image and text files are allowed!");
-      }
-
-      setFiles(droppedFiles);
-    }
-    setIsDragging(false);
-  };
-
-  const messagesEndRef = useRef<HTMLDivElement>(null);
-
-  const scrollToBottom = () => {
-    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
-  };
-
-  useEffect(() => {
-    scrollToBottom();
-  }, [messages]);
-
-  // Function to handle file selection via the upload button
-  const handleUploadClick = () => {
-    fileInputRef.current?.click();
-  };
-
-  // Function to handle files selected from the file dialog
-  const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
-    const selectedFiles = event.target.files;
-    if (selectedFiles) {
-      const validFiles = Array.from(selectedFiles).filter(
-        (file) =>
-          file.type.startsWith("image/") || file.type.startsWith("text/")
-      );
-
-      if (validFiles.length === selectedFiles.length) {
-        const dataTransfer = new DataTransfer();
-        validFiles.forEach((file) => dataTransfer.items.add(file));
-        setFiles(dataTransfer.files);
-      } else {
-        toast.error("Only image and text files are allowed");
-      }
-    }
-  };
-
-  return (
-    <div
-      className="flex flex-row justify-center pb-20 h-dvh bg-white dark:bg-zinc-900"
-      onDragOver={handleDragOver}
-      onDragLeave={handleDragLeave}
-      onDrop={handleDrop}
-    >
-      <AnimatePresence>
-        {isDragging && (
-          <motion.div
-            className="fixed pointer-events-none dark:bg-zinc-900/90 h-dvh w-dvw z-10 flex flex-row justify-center items-center flex flex-col gap-1 bg-zinc-100/90"
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-          >
-            <div>Drag and drop files here</div>
-            <div className="text-sm dark:text-zinc-400 text-zinc-500">
-              {"(images and text)"}
-            </div>
-          </motion.div>
-        )}
-      </AnimatePresence>
-
-      <div className="flex flex-col justify-between gap-4">
-        {messages.length > 0 ? (
-          <div className="flex flex-col gap-2 h-full w-dvw items-center overflow-y-scroll">
-            {messages.map((message, index) => (
-              <motion.div
-                key={message.id}
-                className={`flex flex-row gap-2 px-4 w-full md:w-[500px] md:px-0 ${
-                  index === 0 ? "pt-20" : ""
-                }`}
-                initial={{ y: 5, opacity: 0 }}
-                animate={{ y: 0, opacity: 1 }}
-              >
-                <div className="size-[24px] flex flex-col justify-center items-center flex-shrink-0 text-zinc-400">
-                  {message.role === "assistant" ? <BotIcon /> : <UserIcon />}
-                </div>
-
-                <div className="flex flex-col gap-1">
-                  <div className="text-zinc-800 dark:text-zinc-300 flex flex-col gap-4">
-                    <Markdown>{message.content}</Markdown>
-                  </div>
-                  <div className="flex flex-row gap-2">
-                    {message.experimental_attachments?.map((attachment) =>
-                      attachment.contentType?.startsWith("image") ? (
-                        <img
-                          className="rounded-md w-40 mb-3"
-                          key={attachment.name}
-                          src={attachment.url}
-                          alt={attachment.name}
-                        />
-                      ) : attachment.contentType?.startsWith("text") ? (
-                        <div className="text-xs w-40 h-24 overflow-hidden text-zinc-400 border p-2 rounded-md dark:bg-zinc-800 dark:border-zinc-700 mb-3">
-                          {getTextFromDataUrl(attachment.url)}
-                        </div>
-                      ) : null
-                    )}
-                  </div>
-                </div>
-              </motion.div>
-            ))}
-
-            {isLoading &&
-              messages[messages.length - 1].role !== "assistant" && (
-                <div className="flex flex-row gap-2 px-4 w-full md:w-[500px] md:px-0">
-                  <div className="size-[24px] flex flex-col justify-center items-center flex-shrink-0 text-zinc-400">
-                    <BotIcon />
-                  </div>
-                  <div className="flex flex-col gap-1 text-zinc-400">
-                    <div>hmm...</div>
-                  </div>
-                </div>
-              )}
-
-            <div ref={messagesEndRef} />
+        {/* How to Apply */}
+        <section>
+          <h2 className="text-2xl font-semibold mb-4">How to Apply</h2>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+            <div className="bg-white p-6 rounded shadow">1️⃣ Submit Online Application</div>
+            <div className="bg-white p-6 rounded shadow">2️⃣ Upload Required Documents</div>
+            <div className="bg-white p-6 rounded shadow">3️⃣ Pay Application Fee</div>
           </div>
-        ) : (
-          <motion.div className="h-[350px] px-4 w-full md:w-[500px] md:px-0 pt-20">
-            <div className="border rounded-lg p-6 flex flex-col gap-4 text-zinc-500 text-sm dark:text-zinc-400 dark:border-zinc-700">
-              <p className="flex flex-row justify-center gap-4 items-center text-zinc-900 dark:text-zinc-50">
-                <VercelIcon />
-                <span>+</span>
-                <AttachmentIcon />
-              </p>
-              <p>
-                The useChat hook supports sending attachments along with
-                messages as well as rendering previews on the client. This can
-                be useful for building applications that involve sending images,
-                files, and other media content to the AI provider.
-              </p>
-              <p>
-                {" "}
-                Learn more about the{" "}
-                <Link
-                  className="text-blue-500 dark:text-blue-400"
-                  href="https://sdk.vercel.ai/docs/ai-sdk-ui/chatbot#attachments-experimental"
-                  target="_blank"
-                >
-                  useChat{" "}
-                </Link>
-                hook from Vercel AI SDK.
-              </p>
-            </div>
-          </motion.div>
-        )}
+        </section>
 
-        <form
-          className="flex flex-col gap-2 relative items-center"
-          onSubmit={(event) => {
-            const options = files ? { experimental_attachments: files } : {};
-            handleSubmit(event, options);
-            setFiles(null);
-          }}
-        >
-          <AnimatePresence>
-            {files && files.length > 0 && (
-              <div className="flex flex-row gap-2 absolute bottom-12 px-4 w-full md:w-[500px] md:px-0">
-                {Array.from(files).map((file) =>
-                  file.type.startsWith("image") ? (
-                    <div key={file.name}>
-                      <motion.img
-                        src={URL.createObjectURL(file)}
-                        alt={file.name}
-                        className="rounded-md w-16"
-                        initial={{ scale: 0.8, opacity: 0 }}
-                        animate={{ scale: 1, opacity: 1 }}
-                        exit={{
-                          y: -10,
-                          scale: 1.1,
-                          opacity: 0,
-                          transition: { duration: 0.2 },
-                        }}
-                      />
-                    </div>
-                  ) : file.type.startsWith("text") ? (
-                    <motion.div
-                      key={file.name}
-                      className="text-[8px] leading-1 w-28 h-16 overflow-hidden text-zinc-500 border p-2 rounded-lg bg-white dark:bg-zinc-800 dark:border-zinc-700 dark:text-zinc-400"
-                      initial={{ scale: 0.8, opacity: 0 }}
-                      animate={{ scale: 1, opacity: 1 }}
-                      exit={{
-                        y: -10,
-                        scale: 1.1,
-                        opacity: 0,
-                        transition: { duration: 0.2 },
-                      }}
-                    >
-                      <TextFilePreview file={file} />
-                    </motion.div>
-                  ) : null
-                )}
-              </div>
-            )}
-          </AnimatePresence>
-
-          {/* Hidden file input */}
-          <input
-            type="file"
-            multiple
-            accept="image/*,text/*"
-            ref={fileInputRef}
-            className="hidden"
-            onChange={handleFileChange}
-          />
-
-          <div className="flex items-center w-full md:max-w-[500px] max-w-[calc(100dvw-32px)] bg-zinc-100 dark:bg-zinc-700 rounded-full px-4 py-2">
-            {/* Upload Button */}
-            <button
-              type="button"
-              onClick={handleUploadClick}
-              className="text-zinc-500 dark:text-zinc-300 hover:text-zinc-700 dark:hover:text-zinc-100 focus:outline-none mr-3"
-              aria-label="Upload Files"
-            >
-              <span className="w-5 h-5">
-                <AttachmentIcon aria-hidden="true" />
-              </span>
-            </button>
-
-            {/* Message Input */}
-            <input
-              ref={inputRef}
-              className="bg-transparent flex-grow outline-none text-zinc-800 dark:text-zinc-300 placeholder-zinc-400"
-              placeholder="Send a message..."
-              value={input}
-              onChange={handleInputChange}
-              onPaste={handlePaste}
-            />
+        {/* Tuition & Scholarships */}
+        <section>
+          <h2 className="text-2xl font-semibold mb-4">Tuition & Scholarships</h2>
+          <p className="text-gray-700 mb-4">
+            We believe education should be accessible. Demo University offers competitive tuition rates and a range of scholarships.
+          </p>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div className="bg-white p-6 rounded shadow">💵 Tuition: $12,000/year</div>
+            <div className="bg-white p-6 rounded shadow">🎓 Scholarships up to 50% available</div>
           </div>
-        </form>
-      </div>
-    </div>
+        </section>
+
+        {/* FAQ */}
+        <section>
+          <h2 className="text-2xl font-semibold mb-4">Frequently Asked Questions</h2>
+          <div className="space-y-4">
+            <div className="bg-white p-4 rounded shadow">
+              <strong>Q:</strong> What is the application deadline?<br />
+              <strong>A:</strong> Regular applications close on March 31.
+            </div>
+            <div className="bg-white p-4 rounded shadow">
+              <strong>Q:</strong> Are scholarships available?<br />
+              <strong>A:</strong> Yes, we offer both merit and need-based scholarships.
+            </div>
+          </div>
+        </section>
+
+        {/* Contact */}
+        <section className="text-center">
+          <h2 className="text-2xl font-semibold mb-4">Contact Admissions</h2>
+          <p className="text-gray-700 mb-2">📧 admissions@havanauniversity.edu</p>
+          <p className="text-gray-700">📞 +65 1234 5678</p>
+        </section>
+      </section>
+
+
+      <footer className="mt-auto bg-blue-900 border-t py-6">
+        <div className="max-w-6xl mx-auto px-4 text-center text-sm text-white">
+          © Havana University — built for chatbot demo
+        </div>
+      </footer>
+
+      <ChatWidget />
+    </main>
   );
 }
