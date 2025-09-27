@@ -1,15 +1,23 @@
+/**
+ * AdminChatView.tsx
+ * 
+ * returns a sidebar chatwindow for admins to use
+ */
+
 "use client";
 
 import React, { useEffect, useRef, useState } from "react";
 import { addMessage, getMessages, updateAdminChat, subscribeToMessages } from "@/lib/supabase/query";
 import { supabase } from "@/lib/supabase/client";
 
+// props to be used for chat sidebar
 interface AdminChatViewProps {
   chatId: string;
   open: boolean;
   setOpen: React.Dispatch<React.SetStateAction<boolean>>; // <- use state setter
 }
 
+// message interface
 type Message = {
   id: string;
   session_id: string;
@@ -17,6 +25,16 @@ type Message = {
   content: string;
   created_at: string;
 };
+
+/**
+ * AdminChatView component
+ *
+ * Handles:
+ * - Loading initial messages
+ * - Real-time updates via Supabase subscriptions
+ * 
+ * Used as sidebar in admin/page
+ */
 
 export default function AdminChatView({ chatId, open, setOpen }: AdminChatViewProps) {
   const [messages, setMessages] = useState<Message[]>([]);
@@ -26,6 +44,10 @@ export default function AdminChatView({ chatId, open, setOpen }: AdminChatViewPr
   const initIntervene = useRef(false);
   const sidebarRef = useRef<HTMLDivElement>(null);
 
+
+  // initalize message if chat is empty
+  // should not be the case as user would have opened first
+  // will remove for future
   useEffect(() => {
     if (initRan.current) return;
     initRan.current = true;
@@ -45,8 +67,8 @@ export default function AdminChatView({ chatId, open, setOpen }: AdminChatViewPr
     init();
   }, [chatId]);
 
+  // Supabase realtime subcription to listen for new messages
   useEffect(() => {
-    // subscribe directly to supabase realtime
     const channel = supabase
       .channel(`chat-${chatId}`)
       .on(
@@ -58,18 +80,17 @@ export default function AdminChatView({ chatId, open, setOpen }: AdminChatViewPr
           filter: `session_id=eq.${chatId}`,
         },
         (payload) => {
-          console.log("🔥 New message:", payload.new);
           setMessages((prev) => [...prev, payload.new as Message]);
         }
       )
-      .subscribe((status) => {
-        console.log("📡 Channel status:", status);
-      });
+      .subscribe();
 
     return () => {
       supabase.removeChannel(channel);
     };
   }, [chatId]);
+
+  // auto scroll messages
 
   useEffect(() => {
     const el = scrollerRef.current;
@@ -77,13 +98,15 @@ export default function AdminChatView({ chatId, open, setOpen }: AdminChatViewPr
   }, [messages]);
 
 
+  // Send handler
+  // Simplified version of chatwindow helper, only needs to send message
 
-  // Optional: auto-scroll or resize logic can go here
   async function handleSend(e?: React.FormEvent) {
     e?.preventDefault();
     if (!text.trim()) return;
-    // insert user message
     await addMessage(chatId, "admin", text.trim());
+
+    // updates the need for intervension to false once admin sends a message to join the chat
     if (!initIntervene.current) {
       initIntervene.current = true;
       await updateAdminChat(chatId);
@@ -92,6 +115,8 @@ export default function AdminChatView({ chatId, open, setOpen }: AdminChatViewPr
     setText("");
   }
 
+
+  // UI for admin chat sidebar
   return (
     <div
       className={`fixed top-0 right-0 z-50 h-full w-[400px] bg-white shadow-2xl border-l border-gray-200 transform transition-transform duration-300 ${open ? "translate-x-0" : "translate-x-full"
@@ -148,6 +173,7 @@ export default function AdminChatView({ chatId, open, setOpen }: AdminChatViewPr
             })}
           </div>
 
+          {/* Input */}
           <form onSubmit={handleSend} className="p-3 border-t flex gap-2 items-center bg-white">
             <input
               value={text}

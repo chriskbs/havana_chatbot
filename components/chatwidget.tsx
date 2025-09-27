@@ -1,4 +1,8 @@
-// components/ChatWidget.tsx
+/**
+ * ChatWidget.tsx
+ * 
+ * returns a toggleable chatwidget that opens a chat window
+ */
 "use client";
 import React, { useEffect, useState } from "react";
 import { addChat } from "@/lib/supabase/query";
@@ -8,21 +12,22 @@ export default function ChatWidget() {
   const [open, setOpen] = useState(false);
   const [chatId, setChatId] = useState<string | null>(null);
 
+  // fucntion to initialize new chat
   async function ensureChat() {
     if (!chatId) {
-      const chat = await addChat(); // returns chat object with id
+      const chat = await addChat(); 
       setChatId(chat.id);
     }
   }
 
+  // initializes new chat when chat modal is opened
   useEffect(() => {
     if (open) {
       ensureChat();
-      console.log('test')
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open]);
 
+  // UI component
   return (
     <div>
       <button

@@ -1,3 +1,7 @@
+/**
+ * Set of icon components from vercel template
+ */
+
 export const BotIcon = () => {
   return (
     <svg

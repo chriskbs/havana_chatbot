@@ -1,9 +1,15 @@
-// components/ChatWindow.tsx
+/**
+ * ChatWindow.tsx
+ * 
+ * returns a chat window component to be used for displaying and submitting messages in chatwidget
+ */
+
 "use client";
 import React, { useEffect, useRef, useState } from "react";
 import { addMessage, getMessages, subscribeToMessages } from "@/lib/supabase/query";
 import { supabase } from "@/lib/supabase/client";
 
+// Message type definition
 type Message = {
     id: string;
     session_id: string;
@@ -12,12 +18,25 @@ type Message = {
     created_at: string;
 };
 
+/**
+ * ChatWindow component
+ *
+ * Handles:
+ * - Loading initial messages
+ * - Showing a welcome message if chat is empty
+ * - Real-time updates via Supabase subscriptions
+ * - Sending user input & calling the AI API
+ * xs
+ * Used in ChatWidget
+ */
+
 export default function ChatWindow({ chatId }: { chatId: string }) {
     const [messages, setMessages] = useState<Message[]>([]);
     const [text, setText] = useState("");
     const scrollerRef = useRef<HTMLDivElement | null>(null);
-    const initRan = useRef(false);
+    const initRan = useRef(false); // ensure initial message runs only once
 
+    // initialize a welcome message if chat is empty
     useEffect(() => {
         if (initRan.current) return;
         initRan.current = true;
@@ -38,9 +57,8 @@ export default function ChatWindow({ chatId }: { chatId: string }) {
     }, [chatId]);
 
 
-
+    // Supabase Realtime subscription to listen for new message updates
     useEffect(() => {
-        // subscribe directly to supabase realtime
         const channel = supabase
             .channel(`chat-${chatId}`)
             .on(
@@ -52,58 +70,61 @@ export default function ChatWindow({ chatId }: { chatId: string }) {
                     filter: `session_id=eq.${chatId}`,
                 },
                 (payload) => {
-                    console.log("🔥 New message:", payload.new);
                     setMessages((prev) => [...prev, payload.new as Message]);
                 }
             )
-            .subscribe((status) => {
-                console.log("📡 Channel status:", status);
-            });
-
+            .subscribe();
+        
+        // Cleanup on unmounting the subscription
         return () => {
             supabase.removeChannel(channel);
         };
     }, [chatId]);
 
+    // auto scroll for messages
     useEffect(() => {
         const el = scrollerRef.current;
         if (el) el.scrollTop = el.scrollHeight;
     }, [messages]);
 
+    // send handler
+    // will call openAI AI
+
     async function handleSend(e?: React.FormEvent) {
         e?.preventDefault();
         if (!text.trim()) return;
+        
         // insert user message
         await addMessage(chatId, "user", text.trim());
-        console.log("message sent")
         setText("");
 
         try {
-            // Call your AI API
+            // forward message to openAI API route
             const response = await fetch("/api/chat", {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({ sessionId: chatId, content: text.trim() }),
             });
             const data = await response.json();
-            console.log(data)
-
-            console.log("api success")
 
             if (!response.ok) throw new Error("AI API error");
         } catch (err) {
-            console.error("AI error:", err);
             await addMessage(chatId, "assistant", "Error: unable to get response from AI.");
         }
 
-        // For demo: simple bot echo response inserted by client (replace with real bot)
+        // To test connection: simple bot echo response inserted by client (has been replace with real bot)
         //setTimeout(async () => {
         //    await addMessage(chatId, "assistant", `Bot (echo): ${text.trim()}`);
         //}, 600);
     }
 
+    /**
+     * UI for chatwindow
+     */
+
     return (
         <div className="flex flex-col h-full">
+            {/* Messages */}
             <div className="flex-1 overflow-y-auto p-4 space-y-3 bg-gradient-to-b from-white/90 to-blue-100/90 backdrop-blur-md" ref={scrollerRef}>
                 {messages.map((m) => {
                     const isUser = m.role === "user";
@@ -138,6 +159,7 @@ export default function ChatWindow({ chatId }: { chatId: string }) {
                 })}
             </div>
 
+            {/* Input */}
             <form onSubmit={handleSend} className="p-3 border-t flex gap-2 items-center bg-white">
                 <input
                     value={text}
