@@ -1,48 +1,83 @@
 
+# School Chatbot Project
+A web-based chatbot that simulates a prospective student interacting with a school’s website.
+The bot can answer FAQs, escalate to a human, or schedule a follow-up call.
+An admin dashboard is provided for monitoring and intervention.
 
-start time: saturday 27 sept 2.30 pm 
-set up vercel + supabase
+## Timeline
 
-time finish without comment/documnet: 5:30
+- **Preparation (schema design + realtime learning):** ~1 hour  
+- **Start coding:** Sat, 27 Sept @ 2:30 PM  
+- **Core implementation (Vercel + Supabase setup, features):** Finished by 5:30 PM  
+- **Total coding time (excluding docs/comments):** ~4 hours  
 
-# Vercel AI SDK useChat with Attachments Example
+**After break**  
+- 6:15 PM → resumed for documentation & code commenting  
+- 7:30 PM → finished documentation pass  
 
-This example demonstrates how to use the [Vercel AI SDK](https://sdk.vercel.ai/docs) with [Next.js](https://nextjs.org/) with the `useChat` hook to create a chat interface that can send and receive multi-modal messages from the AI provider of your choice.
+# Features
 
-## Deploy your own
+## Student-facing chat page
+💬 Ask simple questions about the school (FAQs)
+👨‍🏫 Escalate to a human if needed
+📞 Book a follow-up call with an admin
 
-[![Deploy with Vercel](https://vercel.com/button)](https://vercel.com/new/clone?repository-url=https%3A%2F%2Fgithub.com%2Fvercel-labs%2Fai-sdk-preview-attachments&env=OPENAI_API_KEY&envDescription=API%20keys%20needed%20for%20application&envLink=platform.openai.com)
+## Admin dashboard
+📊 View all chat sessions and their statuses
+🛠 Intervene in a chat if necessary
+✅ No authentication required (for demo simplicity)
 
-## How to use
+# Tech Stack
+Next.js (React + API routes) – frontend + backend
+Supabase – database + realtime API
+OpenAI API – intent detection, FAQ answering, booking info extraction
+TailwindCSS – styling
 
-Run [`create-next-app`](https://github.com/vercel/next.js/tree/canary/packages/create-next-app) with [npm](https://docs.npmjs.com/cli/init), [Yarn](https://yarnpkg.com/lang/en/docs/cli/create/), or [pnpm](https://pnpm.io) to bootstrap the example:
+# Architecture & Design Choices
 
+### Used Vercel for Deployment:
+Easy to set up vercel project with a variety of next.js templates to choose from to speed up development.
+
+Project first initialized using a vercel template (https://github.com/vercel-labs/ai-sdk-preview-attachments)
+
+### Supabase as DB: 
+Easy to set up Postgres with Realtime API, perfect for chat logging and session state. Had a wealth of experience using Supabase Postgres for my own projects and was aware of Realtime as a hook to implement 2-way chat.
+
+Initally had to spend 30 minutes learning Realtime API as previous chatbots I created were only 1-way
+
+### OpenAI structured outputs: 
+Used to classify user intents (info, admin, admin_now, book_call). Keeps bot logic simple and predictable.
+
+### Two-tier bot logic:
+Intent classification (what type of request is this?)
+FAQ retrieval / escalation handling
+
+### Minimal admin flow:
+Escalation is represented by flags in the chat_sessions table (is_admin, escalation_pending, book_call).
+
+# Setup Instructions
+
+### 1. Clone the repo
 ```bash
-npx create-next-app --example https://github.com/vercel-labs/ai-sdk-preview-attachments ai-sdk-preview-attachments-example
+git clone https://github.com/chriskbs/havana_chatbot
+cd havana_chatbot
 ```
 
+### 2. Install Dependencies
 ```bash
-yarn create next-app --example https://github.com/vercel-labs/ai-sdk-preview-attachments ai-sdk-preview-attachments-example
+pnpm install
 ```
+### 3. Set up environment variables 
 
+Set the required environment variables as shown in the `.env.example` file, but in a new file called `.env`.
+#### Supabase
+SUPABASE_POSTGRES_NEXT_PUBLIC_SUPABASE_URL=your_supabase_url
+SUPABASE_POSTGRES_NEXT_PUBLIC_SUPABASE_ANON_KEY=your_supabase_anon_key
+#### OpenAI
+OPENAI_API_KEY=your_openai_api_key
+
+### 4. Launch development server
 ```bash
-pnpm create next-app --example https://github.com/vercel-labs/ai-sdk-preview-attachments ai-sdk-preview-attachments-example
+pnpm run dev
 ```
-
-To run the example locally you need to:
-
-1. Sign up for accounts with the AI providers you want to use (e.g., OpenAI, Anthropic).
-2. Obtain API keys for each provider.
-3. Set the required environment variables as shown in the `.env.example` file, but in a new file called `.env`.
-4. `npm install` to install the required dependencies.
-5. `npm run dev` to launch the development server.
-
-
-## Learn More
-
-To learn more about Vercel AI SDK or Next.js take a look at the following resources:
-
-- [Vercel AI SDK docs](https://sdk.vercel.ai/docs)
-- [Vercel AI Playground](https://play.vercel.ai)
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
 
