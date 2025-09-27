@@ -84,6 +84,31 @@ export async function getChats() {
   return data;
 }
 
+export async function updateAdminChat(chatId: string) {
+  const { data, error } = await supabase
+    .from("chat_sessions")
+    .update({ is_admin: true, escalation_pending: false })
+    .eq("id", chatId);
+  if (error) throw error;
+}
+
+export async function getAdminChats() {
+  const now = new Date();
+  const fiveMinutesAgo = new Date(now.getTime() - 5 * 60 * 1000); // 5 mins ago
+
+  const { data, error } = await supabase
+    .from("chat_sessions")
+    .select("*")
+    .gte("updated_at", fiveMinutesAgo.toISOString()) 
+    .order("updated_at", { ascending: false })
+    .limit(100);
+  if (error) throw error;
+  return (data || []).map((session) => ({
+    ...session,
+    online: true,
+  }));
+}
+
 
 
 
