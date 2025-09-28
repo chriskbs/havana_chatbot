@@ -11,7 +11,7 @@ An admin dashboard is provided for monitoring and intervention.
 - **Core implementation (Vercel + Supabase setup, features):** Finished by 5:30 PM  
 - **Total coding time (excluding docs/comments):** ~4 hours  
 
-**After break**  
+**After dinner break**  
 - 6:15 PM → resumed for documentation & code commenting  
 - 7:30 PM → finished documentation pass  
 
@@ -35,25 +35,52 @@ TailwindCSS – styling
 
 # Architecture & Design Choices
 
-### Used Vercel for Deployment:
-Easy to set up vercel project with a variety of next.js templates to choose from to speed up development.
+### Deployment with Vercel:
+Used Vercel for rapid development with a variety of next.js templates to choose from.
 
 Project first initialized using a vercel template (https://github.com/vercel-labs/ai-sdk-preview-attachments)
 
 ### Supabase as DB: 
-Easy to set up Postgres with Realtime API, perfect for chat logging and session state. Had a wealth of experience using Supabase Postgres for my own projects and was aware of Realtime as a hook to implement 2-way chat.
+Chose Supabase (Postgres + Realtime API) for chat logging and session state.
 
-Initally had to spend 30 minutes learning Realtime API as previous chatbots I created were only 1-way
+Previously worked with Supabase, but had to spend ~30 minutes learning the Realtime API for 2-way chat.
 
 ### OpenAI structured outputs: 
-Used to classify user intents (info, admin, admin_now, book_call). Keeps bot logic simple and predictable.
+Used to classify user intents (info, admin, admin_now, book_call) and answer relevant questions.
 
-### Two-tier bot logic:
-Intent classification (what type of request is this?)
-FAQ retrieval / escalation handling
+This keeps bot logic simple and predictable for the assignment
 
-### Minimal admin flow:
-Escalation is represented by flags in the chat_sessions table (is_admin, escalation_pending, book_call).
+### Bot logic:
+The chatbot follows a two-tier logic model combining intent classification with FAQ retrieval / escalation handling.
+
+Overall flow:
+1. classfiy user intent into one of the following categories:
+    - ask information
+    - ask for admin
+    - book call
+    - ask for admin now
+    - general/small talk
+    - unknown
+2. using classified intent bot will act accordingly
+    - Information request → Search FAQ for relevant information. If no answer is found, escalate to an admin.
+    - Admin request → Ask if the user would like to book a call or connect with an admin now.
+    - Book a call → Collect phone number and preferred contact time.
+    - Admin now → Notify the user to wait while an admin is contacted.
+    - General queries (e.g. greetings, introductions) → Respond as a helpful attendant for the university.
+    - Fallback → If unsure, ask if the user would like to contact an admin (book later / connect now).
+
+### Admin flow:
+The admin dashboard is designed to support both live chat intervention and call bookings, with state management handled via flags in the chat_sessions table (is_admin, escalation_pending, book_call)
+
+Overall design flow
+1. Live chat
+    - Table with current live chats (active within past 5 minutes) for admins to intervere (enter chat and message manually)
+    - Chat sessions that require assistance (escalation_pending) will be flaged yellow and a red escalation_pending indicator
+    - Once an admin sends a message, the chat is flagged as admin handled to prevent multiple admins intervening in the same session.
+2. Booked calls
+    - Table with all chats that booked a call, with respective phone numbers and schedule timing
+    - amdins can click a button to call
+    - admins are also able to open chat history for additional context
 
 # Setup Instructions
 
@@ -81,3 +108,32 @@ OPENAI_API_KEY=your_openai_api_key
 pnpm run dev
 ```
 
+# Known Limitations
+- Optimized for desktop and light mode only.
+- Mobile responsiveness and dark mode styling are not yet fully implemented.
+- The initial assistant greeting (“Hi, I’m May, your assistant...”) may not appear on the very first load, but refreshing the page and starting a new session resolves it.
+
+# Further improvements
+
+1. Booking Integration
+- Connect the chatbot’s booking flow to external services such as Google Calendar or Calendly, so that scheduled calls sync automatically with staff availability.
+
+2. Dedicated Booking Table
+- Introduce a normalized database table for bookings linked to chat sessions, allowing users to make and manage multiple bookings across different conversations.
+
+3. Admin Dashboard Enhancements
+- Improve the UI/UX for admins, including a collapsible/auto-closing sidebar and smoother navigation between active chats.
+
+4. Improved Escalation Flow
+-  Enable real-time notifications (e.g. email or Slack integration) for admins when a chat requires human intervention. 
+- Could be done with realtime subscription for the table to listen to updates (similar to live chat)
+
+5. Knowledge Base Expansion
+- Connect the chatbot to a structured FAQ or CMS for more scalable and easily updatable answers. 
+- Need to add more information to FAQ. Currently limited to sample seeded information from ChatGPT. Could not answer information such as how many degrees provided as information is not in FAQ database.
+
+6. Performance Optimizations
+- Optimize API calls and caching to reduce response times for a smoother chat experience.
+
+7. Responsive Design & Theming
+- Extend support for mobile layouts and dark mode to improve accessibility and user experience across devices.
